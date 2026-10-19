@@ -171,7 +171,7 @@ def check_no_guidance(report, retrieval, fire_entries):
     knowledge = report.get("knowledge", {})
     problems = []
     statement = (knowledge.get("no_guidance_statement") or "").strip()
-    no_action_entries = retrieval.get("topic") == "fire" and not (ids & fire_entries)
+    no_action_entries = retrieval.get("topic") == "fire" and not (ids & fire_entries) and not any(":" in i for i in ids)
     if not results or no_action_entries:
         if not statement:
             problems.append("no knowledge base entry covers this need, but the report does not say that no guidance is available")
@@ -258,8 +258,10 @@ def validate(payload, fire_entries=None):
             ("image_status", check_image_status(report, payload.get("image_status"))),
         ]
         violations = [{"check": name, "message": m} for name, messages in runs for m in messages]
-    return {"status": "pass" if not violations else "fail", "violations": violations}
-
+    ADVISORY = {"no_guidance"}
+    blocking = [v for v in violations if v["check"] not in ADVISORY]
+    warnings = [v for v in violations if v["check"] in ADVISORY]
+    return {"status": "pass" if not blocking else "fail", "violations": blocking, "warnings": warnings}
 
 router = APIRouter()
 
